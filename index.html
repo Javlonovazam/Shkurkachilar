@@ -332,6 +332,36 @@ function norm(v){return String(v||'').trim().toLowerCase()}
 function showLoading(txt='Yuklanmoqda...'){document.body.style.cursor='wait';}
 function hideLoading(){document.body.style.cursor='default';}
 function toast(msg){alert(msg)}
+function setSyncStatus(msg, type='info'){
+  let el=document.getElementById('syncStatus');
+  if(!el){
+    el=document.createElement('div');
+    el.id='syncStatus';
+    el.style.cssText='position:fixed;right:14px;bottom:14px;z-index:99999;padding:10px 14px;border-radius:12px;font-weight:900;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.2s;';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.style.background=type==='ok'?'rgba(34,197,94,.95)':type==='err'?'rgba(239,68,68,.95)':'rgba(47,125,244,.95)';
+  el.style.color='white';
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>{el.style.opacity='0';setTimeout(()=>{el.style.opacity='1';el.textContent='';},250)},2200);
+}
+async function backgroundSync(action, payload, successText){
+  setSyncStatus('⏳ Google Sheetsga yuborilmoqda...');
+  try{
+    await api(action, payload);
+    await loadData();
+    refreshAll();
+    setSyncStatus(successText || '✅ Google Sheetsga tushdi','ok');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('❌ Google Sheetsga yuborilmadi','err');
+    alert('Google Sheetsga yuborishda xato: '+(e.message||e));
+  }
+}
+function localSave(){
+  localStorage.setItem(CACHE_KEY, JSON.stringify(db));
+}
 
 async function api(action, payload={}){
   showLoading();
@@ -495,13 +525,20 @@ async function addOrder(){
   const qty=Number(safeEl('regQty').value);
   if(!number || qty<=0)return alert('Zayavka raqami va eshik sonini kiriting!');
   if(getOrder(number))return alert(`Bu zayavka oldin yozilgan! Eshik soni: ${getOrder(number).qty}`);
-  try{
-    await api('addOrder', {number, qty, date: todayISO()});
-    await loadData();
-    safeEl('regNumber').value=''; safeEl('regQty').value=''; checkRegNumberLive();
-    refreshAll();
-    alert('Zayavka Google Sheetsga saqlandi!');
-  }catch(e){alert(e.message)}
+
+  // 1) Avval saytda darhol saqlaymiz
+  const tempOrder={id:'temp_'+uid(), number, qty, date:todayISO(), closed:false, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), _pending:true};
+  db.orders.push(tempOrder);
+  localSave();
+
+  safeEl('regNumber').value='';
+  safeEl('regQty').value='';
+  checkRegNumberLive();
+  refreshAll();
+  setSyncStatus('✅ Saytga saqlandi','ok');
+
+  // 2) Google Sheetsga fon rejimida yuboramiz
+  backgroundSync('addOrder', {number, qty, date: todayISO()}, '✅ Zayavka Google Sheetsga tushdi');
 }
 
 function syncMonthByYear(){
@@ -648,14 +685,36 @@ async function addWork(){
   const qty=Number(safeEl('workQty').value);
   if(!positionId || !orderNumber || !employeeId || qty<=0)return alert('Barcha maydonlarni to‘ldiring!');
   if(!canUserUsePosition(positionId))return alert('Sizda bu pozitsiyaga yozish ruxsati yo‘q!');
-  try{
-    await api('addWork', {positionId, orderNumber, employeeId, qty, createdBy: currentUser?.name||''});
-    await loadData();
-    safeEl('workQty').value='';
-    showOrderProgress();
-    refreshAll();
-    alert('Saqlandi!');
-  }catch(e){alert(e.message)}
+
+  const o=getOrder(orderNumber);
+  if(!o)return alert('Zayavka topilmadi!');
+  const prev=previousPositionsDone(orderNumber, positionId);
+  if(!prev.ok)return alert(prev.msg);
+  const done=orderDoneByPosition(orderNumber, positionId);
+  if(done+qty > Number(o.qty))return alert(`Qoldiq yetarli emas. Qoldi: ${Number(o.qty)-done}`);
+
+  // 1) Avval saytda darhol ko‘rsatamiz
+  const tempWork={
+    id:'temp_'+uid(),
+    date:new Date().toISOString(),
+    dateStr:new Date().toLocaleString('uz-UZ'),
+    positionId,
+    orderNumber,
+    employeeId,
+    qty,
+    createdBy: currentUser?.name||'',
+    _pending:true
+  };
+  db.works.push(tempWork);
+  localSave();
+
+  safeEl('workQty').value='';
+  showOrderProgress();
+  refreshAll();
+  setSyncStatus('✅ Ish saytda saqlandi','ok');
+
+  // 2) Google Sheetsga fon rejimida yuboramiz
+  backgroundSync('addWork', {positionId, orderNumber, employeeId, qty, createdBy: currentUser?.name||''}, '✅ Ish Google Sheetsga tushdi');
 }
 
 function renderSettings(){
@@ -819,6 +878,11 @@ document.addEventListener('DOMContentLoaded',async()=>{
     await loadData();
     refreshAll();
     applyRoleMenu();
+    setInterval(async()=>{
+      if(currentUser){
+        try{ await loadData(); refreshAll(); }catch(e){ console.warn(e); }
+      }
+    }, 20000);
   }catch(e){
     alert('Google Sheets bazaga ulanib bo‘lmadi: '+e.message);
   }
