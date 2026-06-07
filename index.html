@@ -316,8 +316,11 @@ tr td:last-child, th:last-child{border-radius:0 10px 10px 0}
 </div>
 
 <script>
-const KEY = 'shkurka_panel_local_v5_fixed';
+const API_URL = "https://script.google.com/macros/s/AKfycbw2QmJwcljbdxTSpL1gl6ojUqQ9Ub6LZdk_73BXToWvXYf_mplNPo4sMfmGeWJAATZN/exec";
+const CACHE_KEY = 'shkurka_panel_google_cache_v1';
+
 let currentUser = null;
+let db = {positions:[], employees:[], admins:[], orders:[], works:[]};
 let selectedOrderId = '';
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
@@ -326,52 +329,75 @@ function currentMonth(){return new Date().toISOString().slice(0,7)}
 function money(n){return (Number(n)||0).toLocaleString('uz-UZ')}
 function safeEl(id){return document.getElementById(id)}
 function norm(v){return String(v||'').trim().toLowerCase()}
+function showLoading(txt='Yuklanmoqda...'){document.body.style.cursor='wait';}
+function hideLoading(){document.body.style.cursor='default';}
+function toast(msg){alert(msg)}
 
-function defaultData(){
-  return {
-    positions:[
-      {id:uid(),name:'Chornavoy',price:3000,order:1},
-      {id:uid(),name:'Chistavoy',price:3000,order:2}
-    ],
-    employees:[
-      {id:uid(),code:'001',name:'Aliyev Ali',positionId:'all'},
-      {id:uid(),code:'002',name:'Valiyev Vali',positionId:'all'}
-    ],
-    admins:[
-      {id:uid(),name:'Admin',pin:'1234',permissions:[]}
-    ],
-    orders:[],
-    works:[]
-  };
-}
-
-function loadData(){
-  let d;
-  try{d=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){d=null}
-  if(!d){d=defaultData();localStorage.setItem(KEY,JSON.stringify(d))}
-  d.positions = d.positions||[];
-  d.employees = d.employees||[];
-  d.admins = d.admins||[];
-  d.orders = d.orders||[];
-  d.works = d.works||[];
-  if(!d.positions.length){
-    d.positions.push({id:uid(),name:'Chornavoy',price:3000,order:1},{id:uid(),name:'Chistavoy',price:3000,order:2});
+async function api(action, payload={}){
+  showLoading();
+  try{
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action, payload})
+    });
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Server xatosi');
+    return json.result;
+  }catch(err){
+    console.error(err);
+    throw err;
+  }finally{
+    hideLoading();
   }
-  if(!d.admins.length)d.admins.push({id:uid(),name:'Admin',pin:'1234',permissions:[]});
-  saveData(d);
-  return d;
 }
-function saveData(d){localStorage.setItem(KEY,JSON.stringify(d))}
-function data(){return loadData()}
+
+async function loadData(){
+  try{
+    const data = await api('getAllData');
+    db = {
+      positions: data.positions || [],
+      employees: data.employees || [],
+      admins: data.admins || [],
+      orders: data.orders || [],
+      works: data.works || []
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(db));
+    return db;
+  }catch(e){
+    const cached = localStorage.getItem(CACHE_KEY);
+    if(cached){
+      db = JSON.parse(cached);
+      return db;
+    }
+    throw e;
+  }
+}
+
+function data(){return db}
+function saveCache(){localStorage.setItem(CACHE_KEY, JSON.stringify(db))}
 function sortedPositions(){
-  return data().positions.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  return (data().positions||[]).slice().filter(p=>String(p.active)!=='false').sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
 }
-function getPos(id){return data().positions.find(p=>p.id===id)}
-function getEmp(id){return data().employees.find(e=>e.id===id)}
-function getOrder(num){return data().orders.find(o=>norm(o.number)===norm(num))}
-function getOrderById(id){return data().orders.find(o=>o.id===id)}
+function getPos(id){return (data().positions||[]).find(p=>String(p.id)===String(id))}
+function getEmp(id){return (data().employees||[]).find(e=>String(e.id)===String(id))}
+function getOrder(num){return (data().orders||[]).find(o=>norm(o.number)===norm(num))}
+function getOrderById(id){return (data().orders||[]).find(o=>String(o.id)===String(id))}
+
+function normalizeDate(value){
+  if(!value)return '';
+  const s=String(value);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const d=new Date(value);
+  if(!isNaN(d)) return d.toISOString().slice(0,10);
+  return s.slice(0,10);
+}
+function normalizeMonth(value){
+  const d=normalizeDate(value);
+  return d.slice(0,7);
+}
 function orderDoneByPosition(orderNumber, positionId){
-  return data().works.filter(w=>norm(w.orderNumber)===norm(orderNumber)&&w.positionId===positionId).reduce((s,w)=>s+(Number(w.qty)||0),0);
+  return (data().works||[]).filter(w=>norm(w.orderNumber)===norm(orderNumber)&&String(w.positionId)===String(positionId)).reduce((s,w)=>s+(Number(w.qty)||0),0);
 }
 function orderStatus(order){
   const ps=sortedPositions();
@@ -390,7 +416,7 @@ function orderStatusBadge(order){
 }
 function previousPositionsDone(orderNumber, positionId){
   const ps=sortedPositions();
-  const index=ps.findIndex(p=>p.id===positionId);
+  const index=ps.findIndex(p=>String(p.id)===String(positionId));
   if(index<=0)return {ok:true,msg:''};
   const o=getOrder(orderNumber); if(!o)return {ok:false,msg:'Zayavka topilmadi'};
   for(let i=0;i<index;i++){
@@ -405,31 +431,22 @@ function previousPositionsDone(orderNumber, positionId){
 function canUserUsePosition(positionId){
   if(!currentUser)return false;
   if(currentUser.role==='General')return true;
-  const admin=data().admins.find(a=>a.id===currentUser.id);
-  if(!admin)return false;
-  return (admin.permissions||[]).includes(positionId);
+  return (currentUser.permissions||[]).map(String).includes(String(positionId));
 }
 
-function login(){
+async function login(){
   const pin=safeEl('loginPin').value.trim();
-  if(pin==='general456'){
-    currentUser={role:'General',name:'General'};
+  if(!pin)return alert('PIN kiriting');
+  try{
+    currentUser = await api('login', {pin});
     safeEl('loginOverlay').style.display='none';
+    await loadData();
     applyRoleMenu();
     refreshAll();
     openPage('dashboardPage');
-    return;
+  }catch(e){
+    alert(e.message || 'PIN noto‘g‘ri!');
   }
-  const adm=data().admins.find(a=>String(a.pin)===pin);
-  if(adm){
-    currentUser={role:'Admin',name:adm.name,id:adm.id};
-    safeEl('loginOverlay').style.display='none';
-    applyRoleMenu();
-    refreshAll();
-    openPage('dashboardPage');
-    return;
-  }
-  alert('PIN noto‘g‘ri!');
 }
 function logout(){
   currentUser=null;
@@ -473,17 +490,18 @@ function checkRegNumberLive(){
     st.textContent='✅ Yangi zayavka, yozilmagan';
   }
 }
-function addOrder(){
+async function addOrder(){
   const number=safeEl('regNumber').value.trim();
   const qty=Number(safeEl('regQty').value);
   if(!number || qty<=0)return alert('Zayavka raqami va eshik sonini kiriting!');
   if(getOrder(number))return alert(`Bu zayavka oldin yozilgan! Eshik soni: ${getOrder(number).qty}`);
-  const d=data();
-  d.orders.push({id:uid(),number,qty,date:todayISO(),closed:false});
-  saveData(d);
-  safeEl('regNumber').value=''; safeEl('regQty').value=''; checkRegNumberLive();
-  alert('Zayavka saqlandi!');
-  refreshAll();
+  try{
+    await api('addOrder', {number, qty, date: todayISO()});
+    await loadData();
+    safeEl('regNumber').value=''; safeEl('regQty').value=''; checkRegNumberLive();
+    refreshAll();
+    alert('Zayavka Google Sheetsga saqlandi!');
+  }catch(e){alert(e.message)}
 }
 
 function syncMonthByYear(){
@@ -493,7 +511,7 @@ function syncMonthByYear(){
   if(y)safeEl('ordersMonth').value=y+'-'+m;
 }
 function renderOrderYears(){
-  const years=[...new Set(data().orders.map(o=>String(o.date||todayISO()).slice(0,4)))];
+  const years=[...new Set((data().orders||[]).map(o=>normalizeDate(o.date||todayISO()).slice(0,4)))];
   const cur=String(new Date().getFullYear());
   if(!years.includes(cur))years.push(cur);
   years.sort((a,b)=>b.localeCompare(a));
@@ -503,19 +521,18 @@ function renderOrderYears(){
 function renderOrders(){
   if(!safeEl('ordersMonth').value)safeEl('ordersMonth').value=currentMonth();
   renderOrderYears();
-  const d=data();
   const month=safeEl('ordersMonth').value||currentMonth();
   const year=safeEl('ordersYear').value;
   const st=safeEl('ordersStatus').value;
   const q=norm(safeEl('ordersSearch').value);
-  let arr=d.orders.filter(o=>{
-    const od=String(o.date||'').slice(0,10);
-    if(month && String(o.date||'').slice(0,7)!==month)return false;
-    if(year && String(o.date||'').slice(0,4)!==year)return false;
+  let arr=(data().orders||[]).filter(o=>{
+    const od=normalizeDate(o.date||'');
+    if(month && od.slice(0,7)!==month)return false;
+    if(year && od.slice(0,4)!==year)return false;
     if(st && orderStatus(o)!==st)return false;
     if(q && !norm(o.number).includes(q))return false;
     return true;
-  }).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  }).sort((a,b)=>String(normalizeDate(b.date)).localeCompare(String(normalizeDate(a.date))));
   safeEl('ordersBody').innerHTML=arr.map(o=>{
     const stt=orderStatus(o);
     const className=stt==='done'?'statusDone':(stt==='progress'?'statusProgress':'statusNot');
@@ -523,7 +540,7 @@ function renderOrders(){
     const doneCount=ps.filter(p=>orderDoneByPosition(o.number,p.id)>=Number(o.qty)).length;
     const quick=stt==='done'?'Barcha pozitsiya bitgan':(stt==='progress'?`${doneCount}/${ps.length} pozitsiya bitgan`:'Hali ish kiritilmagan');
     return `<tr class="clickRow ${className}" onclick="toggleOrderDetails('${o.id}')">
-      <td>${o.date||'—'}</td>
+      <td>${normalizeDate(o.date)||'—'}</td>
       <td><b>${o.number}</b></td>
       <td>${o.qty} ta</td>
       <td>${orderStatusBadge(o)}</td>
@@ -534,7 +551,7 @@ function renderOrders(){
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="6">Ma’lumot topilmadi</td></tr>';
-  if(selectedOrderId && !arr.some(o=>o.id===selectedOrderId)){
+  if(selectedOrderId && !arr.some(o=>String(o.id)===String(selectedOrderId))){
     selectedOrderId='';
     safeEl('orderDetails').classList.add('hidden');
   }
@@ -572,34 +589,31 @@ function renderSelectedOrderDetails(){
     <div class="detailGrid">${items}</div>`;
   box.classList.remove('hidden');
 }
-function editOrder(id){
-  const d=data();
-  const o=d.orders.find(x=>x.id===id);
+async function editOrder(id){
+  const o=getOrderById(id);
   if(!o)return;
   const newNumber=prompt('Yangi zayavka raqamini kiriting:', o.number);
   if(!newNumber)return;
   const newQtyStr=prompt('Yangi eshik sonini kiriting:', o.qty);
   const newQty=Number(newQtyStr);
   if(newQty<=0)return alert('Eshik soni noto‘g‘ri!');
-  if(d.orders.some(x=>x.id!==id && norm(x.number)===norm(newNumber)))return alert('Bu zayavka raqami oldin bor!');
-  const oldNumber=o.number;
-  o.number=newNumber.trim();
-  o.qty=newQty;
-  d.works.forEach(w=>{if(norm(w.orderNumber)===norm(oldNumber))w.orderNumber=o.number});
-  saveData(d);
-  selectedOrderId=id;
-  refreshAll();
+  try{
+    await api('updateOrder', {id, number:newNumber.trim(), qty:newQty});
+    await loadData();
+    selectedOrderId=id;
+    refreshAll();
+  }catch(e){alert(e.message)}
 }
-function deleteOrder(id){
-  const d=data();
-  const o=d.orders.find(x=>x.id===id);
+async function deleteOrder(id){
+  const o=getOrderById(id);
   if(!o)return;
   if(!confirm(`${o.number} zayavka o‘chirilsinmi? Unga tegishli ish yozuvlari ham o‘chadi.`))return;
-  d.orders=d.orders.filter(x=>x.id!==id);
-  d.works=d.works.filter(w=>norm(w.orderNumber)!==norm(o.number));
-  saveData(d);
-  if(selectedOrderId===id)selectedOrderId='';
-  refreshAll();
+  try{
+    await api('deleteOrder', {id});
+    await loadData();
+    if(selectedOrderId===id)selectedOrderId='';
+    refreshAll();
+  }catch(e){alert(e.message)}
 }
 
 function onWorkPositionChange(){
@@ -609,7 +623,7 @@ function onWorkPositionChange(){
 function renderWorkEmployees(){
   const posId=safeEl('workPosition').value;
   const sel=safeEl('workEmployee');
-  const emps=data().employees.filter(e=>e.positionId==='all'||e.positionId===posId);
+  const emps=(data().employees||[]).filter(e=>String(e.active)!=='false'&&(e.positionId==='all'||String(e.positionId)===String(posId)));
   sel.innerHTML='<option value="">Xodim tanlang</option>'+emps.map(e=>`<option value="${e.id}">${e.name} (${e.code})</option>`).join('');
 }
 function showOrderProgress(){
@@ -627,30 +641,24 @@ function showOrderProgress(){
   if(!prev.ok)html+=`<div class="warnBox">⚠️ ${prev.msg}</div>`;
   box.innerHTML=html;
 }
-function addWork(){
+async function addWork(){
   const positionId=safeEl('workPosition').value;
   const orderNumber=safeEl('workOrder').value.trim();
   const employeeId=safeEl('workEmployee').value;
   const qty=Number(safeEl('workQty').value);
   if(!positionId || !orderNumber || !employeeId || qty<=0)return alert('Barcha maydonlarni to‘ldiring!');
   if(!canUserUsePosition(positionId))return alert('Sizda bu pozitsiyaga yozish ruxsati yo‘q!');
-  const o=getOrder(orderNumber);
-  if(!o)return alert('Zayavka topilmadi!');
-  const prev=previousPositionsDone(orderNumber,positionId);
-  if(!prev.ok)return alert(prev.msg);
-  const done=orderDoneByPosition(orderNumber,positionId);
-  if(done+qty > Number(o.qty))return alert(`Qoldiq yetarli emas. Qoldi: ${Number(o.qty)-done}`);
-  const d=data();
-  d.works.push({id:uid(),date:new Date().toISOString(),dateStr:new Date().toLocaleString('uz-UZ'),positionId,orderNumber,employeeId,qty});
-  saveData(d);
-  safeEl('workQty').value='';
-  showOrderProgress();
-  refreshAll();
-  alert('Saqlandi!');
+  try{
+    await api('addWork', {positionId, orderNumber, employeeId, qty, createdBy: currentUser?.name||''});
+    await loadData();
+    safeEl('workQty').value='';
+    showOrderProgress();
+    refreshAll();
+    alert('Saqlandi!');
+  }catch(e){alert(e.message)}
 }
 
 function renderSettings(){
-  const d=data();
   const ps=sortedPositions();
   safeEl('positionsBody').innerHTML=ps.map((p,i)=>`
     <tr>
@@ -662,77 +670,67 @@ function renderSettings(){
     </tr>`).join('');
   const posOptions='<option value="all">Umumiy</option>'+ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   safeEl('empPosition').innerHTML=posOptions;
-  safeEl('employeesBody').innerHTML=d.employees.map(e=>`
+  safeEl('employeesBody').innerHTML=(data().employees||[]).map(e=>`
     <tr><td>${e.code}</td><td>${e.name}</td><td>${e.positionId==='all'?'Umumiy':(getPos(e.positionId)?.name||'—')}</td>
     <td><button class="btn red small" onclick="deleteEmployee('${e.id}')">O‘chirish</button></td></tr>`).join('');
-  safeEl('adminsBody').innerHTML=d.admins.map(a=>`
+  safeEl('adminsBody').innerHTML=(data().admins||[]).map(a=>`
     <tr>
       <td>${a.name}</td><td>${a.pin}</td>
       <td><div class="permissions">${ps.map(p=>`
-        <label class="checkItem"><input type="checkbox" ${(a.permissions||[]).includes(p.id)?'checked':''} onchange="togglePermission('${a.id}','${p.id}',this.checked)"> ${p.name}</label>`).join('')}</div></td>
+        <label class="checkItem"><input type="checkbox" ${(Array.isArray(a.permissions)?a.permissions:JSON.parse(a.permissions||'[]')).map(String).includes(String(p.id))?'checked':''} onchange="togglePermission('${a.id}','${p.id}',this.checked)"> ${p.name}</label>`).join('')}</div></td>
       <td><button class="btn red small" onclick="deleteAdmin('${a.id}')">O‘chirish</button></td>
     </tr>`).join('');
 }
-function addPosition(){
+async function addPosition(){
   const name=safeEl('posName').value.trim();
   const price=Number(safeEl('posPrice').value)||0;
   if(!name)return alert('Pozitsiya nomini kiriting!');
-  const d=data();
-  if(d.positions.some(p=>norm(p.name)===norm(name)))return alert('Bu pozitsiya bor!');
-  d.positions.push({id:uid(),name,price,order:d.positions.length+1});
-  saveData(d); safeEl('posName').value=''; safeEl('posPrice').value='';
-  refreshAll();
+  try{
+    await api('addPosition', {name, price});
+    await loadData();
+    safeEl('posName').value=''; safeEl('posPrice').value='';
+    refreshAll();
+  }catch(e){alert(e.message)}
 }
-function updatePosition(id,field,val){
-  const d=data(); const p=d.positions.find(x=>x.id===id); if(!p)return;
-  p[field]=field==='price'?Number(val)||0:val;
-  saveData(d); refreshAll();
+async function updatePosition(id,field,val){
+  const old=getPos(id)||{};
+  const payload={id, name:old.name, price:old.price};
+  payload[field]=field==='price'?Number(val)||0:val;
+  try{await api('updatePosition', payload); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
-function movePosition(id,dir){
-  const d=data(); let ps=d.positions.sort((a,b)=>(a.order||0)-(b.order||0));
-  const i=ps.findIndex(p=>p.id===id); const j=i+dir;
-  if(i<0||j<0||j>=ps.length)return;
-  [ps[i],ps[j]]=[ps[j],ps[i]];
-  ps.forEach((p,idx)=>p.order=idx+1);
-  saveData(d); refreshAll();
+async function movePosition(id,dir){
+  try{await api('movePosition', {id, dir}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
-function deletePosition(id){
+async function deletePosition(id){
   if(!confirm('Pozitsiya o‘chirilsinmi?'))return;
-  const d=data();
-  d.positions=d.positions.filter(p=>p.id!==id);
-  d.employees.forEach(e=>{if(e.positionId===id)e.positionId='all'});
-  d.admins.forEach(a=>a.permissions=(a.permissions||[]).filter(x=>x!==id));
-  d.positions.sort((a,b)=>(a.order||0)-(b.order||0)).forEach((p,i)=>p.order=i+1);
-  saveData(d); refreshAll();
+  try{await api('deletePosition', {id}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
-function addEmployee(){
+async function addEmployee(){
   const code=safeEl('empCode').value.trim(), name=safeEl('empName').value.trim(), positionId=safeEl('empPosition').value;
   if(!code||!name)return alert('Xodim kodi va FIO kiriting!');
-  const d=data(); if(d.employees.some(e=>norm(e.code)===norm(code)))return alert('Bu kod bor!');
-  d.employees.push({id:uid(),code,name,positionId});
-  saveData(d); safeEl('empCode').value=''; safeEl('empName').value=''; refreshAll();
+  try{
+    await api('addEmployee', {code, name, positionId});
+    await loadData(); safeEl('empCode').value=''; safeEl('empName').value=''; refreshAll();
+  }catch(e){alert(e.message)}
 }
-function deleteEmployee(id){
+async function deleteEmployee(id){
   if(!confirm('Xodim o‘chirilsinmi?'))return;
-  const d=data(); d.employees=d.employees.filter(e=>e.id!==id); saveData(d); refreshAll();
+  try{await api('deleteEmployee', {id}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
-function addAdmin(){
+async function addAdmin(){
   const name=safeEl('adminName').value.trim(), pin=safeEl('adminPin').value.trim();
   if(!name||!pin)return alert('Admin ismi va parolini kiriting!');
-  const d=data(); if(d.admins.some(a=>String(a.pin)===pin))return alert('Bu PIN bor!');
-  d.admins.push({id:uid(),name,pin,permissions:[]});
-  saveData(d); safeEl('adminName').value=''; safeEl('adminPin').value=''; refreshAll();
+  try{
+    await api('addAdmin', {name, pin, permissions:[]});
+    await loadData(); safeEl('adminName').value=''; safeEl('adminPin').value=''; refreshAll();
+  }catch(e){alert(e.message)}
 }
-function deleteAdmin(id){
+async function deleteAdmin(id){
   if(!confirm('Admin o‘chirilsinmi?'))return;
-  const d=data(); d.admins=d.admins.filter(a=>a.id!==id); saveData(d); refreshAll();
+  try{await api('deleteAdmin', {id}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
-function togglePermission(adminId,posId,checked){
-  const d=data(); const a=d.admins.find(x=>x.id===adminId); if(!a)return;
-  a.permissions=a.permissions||[];
-  if(checked && !a.permissions.includes(posId))a.permissions.push(posId);
-  if(!checked)a.permissions=a.permissions.filter(x=>x!==posId);
-  saveData(d);
+async function togglePermission(adminId, positionId, checked){
+  try{await api('togglePermission', {adminId, positionId, checked}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
 
 function renderSelects(){
@@ -754,19 +752,19 @@ function renderSelects(){
 }
 function renderDashboard(){
   const d=data();
-  safeEl('stTotalOrders').textContent=d.orders.length;
-  safeEl('stDoneOrders').textContent=d.orders.filter(o=>orderStatus(o)==='done').length;
-  safeEl('stTodayWork').textContent=d.works.filter(w=>String(w.date).slice(0,10)===todayISO()).reduce((s,w)=>s+Number(w.qty||0),0);
-  const total=d.works.reduce((s,w)=>s+(Number(w.qty)||0)*(Number(getPos(w.positionId)?.price)||0),0);
+  safeEl('stTotalOrders').textContent=(d.orders||[]).length;
+  safeEl('stDoneOrders').textContent=(d.orders||[]).filter(o=>orderStatus(o)==='done').length;
+  safeEl('stTodayWork').textContent=(d.works||[]).filter(w=>normalizeDate(w.date)===todayISO()).reduce((s,w)=>s+Number(w.qty||0),0);
+  const total=(d.works||[]).reduce((s,w)=>s+(Number(w.qty)||0)*(Number(getPos(w.positionId)?.price)||0),0);
   safeEl('stTotalSum').textContent=money(total);
-  safeEl('lastWorksBody').innerHTML=d.works.slice(-10).reverse().map(w=>`
-    <tr><td>${new Date(w.date).toLocaleString('uz-UZ')}</td><td>${getPos(w.positionId)?.name||'—'}</td><td>${getEmp(w.employeeId)?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td></tr>`).join('') || '<tr><td colspan="5">Ma’lumot yo‘q</td></tr>';
+  safeEl('lastWorksBody').innerHTML=(d.works||[]).slice(-10).reverse().map(w=>`
+    <tr><td>${w.dateStr||w.date||'—'}</td><td>${getPos(w.positionId)?.name||'—'}</td><td>${getEmp(w.employeeId)?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td></tr>`).join('') || '<tr><td colspan="5">Ma’lumot yo‘q</td></tr>';
 }
 function renderReport(){
   const d=data(), pos=safeEl('reportPosition').value, month=safeEl('reportMonth').value||currentMonth();
   const q=norm(safeEl('reportEmpSearch').value), min=Number(safeEl('reportMinQty').value)||0;
   let map={};
-  d.works.filter(w=>(!pos||w.positionId===pos)&&String(w.date).slice(0,7)===month).forEach(w=>{
+  (d.works||[]).filter(w=>(!pos||String(w.positionId)===String(pos))&&normalizeMonth(w.date)===month).forEach(w=>{
     const e=getEmp(w.employeeId), p=getPos(w.positionId); if(!e||!p)return;
     const key=e.id+'_'+p.id;
     if(!map[key])map[key]={emp:e.name,pos:p.name,qty:0,price:p.price,total:0};
@@ -777,9 +775,9 @@ function renderReport(){
 }
 function renderDaily(){
   const d=data(), pos=safeEl('dailyPosition').value, from=safeEl('dailyFrom').value, to=safeEl('dailyTo').value, q=norm(safeEl('dailySearch').value);
-  let arr=d.works.filter(w=>{
-    const day=String(w.date).slice(0,10), e=getEmp(w.employeeId), p=getPos(w.positionId);
-    if(pos&&w.positionId!==pos)return false;
+  let arr=(d.works||[]).filter(w=>{
+    const day=normalizeDate(w.date), e=getEmp(w.employeeId);
+    if(pos&&String(w.positionId)!==String(pos))return false;
     if(from&&day<from)return false;
     if(to&&day>to)return false;
     if(q && !(norm(w.orderNumber).includes(q)||norm(e?.name).includes(q)))return false;
@@ -788,20 +786,19 @@ function renderDaily(){
   }).slice().reverse();
   safeEl('dailyBody').innerHTML=arr.map(w=>{
     const p=getPos(w.positionId), e=getEmp(w.employeeId), sum=(Number(w.qty)||0)*(Number(p?.price)||0);
-    return `<tr><td>${new Date(w.date).toLocaleString('uz-UZ')}</td><td>${p?.name||'—'}</td><td>${e?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td><td>${money(sum)}</td><td>${currentUser?.role==='General'?`<button class="btn red small" onclick="deleteWork('${w.id}')">O‘chirish</button>`:''}</td></tr>`;
+    return `<tr><td>${w.dateStr||w.date||'—'}</td><td>${p?.name||'—'}</td><td>${e?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td><td>${money(sum)}</td><td>${currentUser?.role==='General'?`<button class="btn red small" onclick="deleteWork('${w.id}')">O‘chirish</button>`:''}</td></tr>`;
   }).join('') || '<tr><td colspan="7">Ma’lumot topilmadi</td></tr>';
 }
-function deleteWork(id){
+async function deleteWork(id){
   if(!confirm('Yozuv o‘chirilsinmi?'))return;
-  const d=data(); d.works=d.works.filter(w=>w.id!==id); saveData(d); refreshAll();
+  try{await api('deleteWork', {id}); await loadData(); refreshAll();}catch(e){alert(e.message)}
 }
 function downloadBackup(){
   const blob=new Blob([JSON.stringify(data(),null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shkurka_backup.json'; a.click(); URL.revokeObjectURL(a.href);
 }
 function clearAllData(){
-  if(!confirm('Hamma ma’lumotlar o‘chadi. Ishonchingiz komilmi?'))return;
-  localStorage.removeItem(KEY); location.reload();
+  alert('Google Sheets versiyada tozalashni Sheets ichidan yoki Apps Script orqali alohida qilish kerak.');
 }
 function refreshAll(){
   renderSelects();
@@ -813,14 +810,18 @@ function refreshAll(){
   showOrderProgress();
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  loadData();
+document.addEventListener('DOMContentLoaded',async()=>{
   safeEl('reportMonth').value=currentMonth();
   safeEl('dailyFrom').value=currentMonth()+'-01';
   safeEl('dailyTo').value=todayISO();
   safeEl('ordersMonth').value=currentMonth();
-  refreshAll();
-  applyRoleMenu();
+  try{
+    await loadData();
+    refreshAll();
+    applyRoleMenu();
+  }catch(e){
+    alert('Google Sheets bazaga ulanib bo‘lmadi: '+e.message);
+  }
 });
 </script>
 </body>
