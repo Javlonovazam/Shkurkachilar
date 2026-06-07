@@ -350,9 +350,8 @@ async function backgroundSync(action, payload, successText){
   setSyncStatus('⏳ Google Sheetsga yuborilmoqda...');
   try{
     await api(action, payload);
-    await loadData();
-    refreshAll();
     setSyncStatus(successText || '✅ Google Sheetsga tushdi','ok');
+    scheduleSoftRefresh();
   }catch(e){
     console.error(e);
     setSyncStatus('❌ Google Sheetsga yuborilmadi','err');
@@ -362,9 +361,50 @@ async function backgroundSync(action, payload, successText){
 function localSave(){
   localStorage.setItem(CACHE_KEY, JSON.stringify(db));
 }
+function idleRun(fn){
+  if('requestIdleCallback' in window){
+    requestIdleCallback(fn,{timeout:1000});
+  }else{
+    setTimeout(fn,0);
+  }
+}
+let refreshTimer=null;
+function scheduleSoftRefresh(){
+  clearTimeout(refreshTimer);
+  refreshTimer=setTimeout(async()=>{
+    if(!currentUser)return;
+    try{
+      await loadData();
+      refreshVisible();
+    }catch(e){
+      console.warn(e);
+    }
+  },4000);
+}
+function refreshVisible(){
+  const active=document.querySelector('.page.active')?.id || 'dashboardPage';
+  renderDashboard();
+  if(active==='ordersPage') renderOrders();
+  if(active==='workPage'){ renderWorkEmployees(); showOrderProgress(); }
+  if(active==='reportPage') renderReport();
+  if(active==='dailyPage') renderDaily();
+  if(active==='settingsPage') renderSettings();
+}
+function fastAfterOrder(){
+  renderDashboard();
+  renderOrders();
+  checkRegNumberLive();
+}
+function fastAfterWork(){
+  renderDashboard();
+  showOrderProgress();
+  const active=document.querySelector('.page.active')?.id;
+  if(active==='ordersPage')renderOrders();
+  if(active==='dailyPage')renderDaily();
+  if(active==='reportPage')renderReport();
+}
 
 async function api(action, payload={}){
-  showLoading();
   try{
     const res = await fetch(API_URL, {
       method:'POST',
@@ -378,7 +418,6 @@ async function api(action, payload={}){
     console.error(err);
     throw err;
   }finally{
-    hideLoading();
   }
 }
 
@@ -534,11 +573,11 @@ async function addOrder(){
   safeEl('regNumber').value='';
   safeEl('regQty').value='';
   checkRegNumberLive();
-  refreshAll();
-  setSyncStatus('✅ Saytga saqlandi','ok');
+  fastAfterOrder();
+  setSyncStatus('✅ Zayavka darhol saqlandi','ok');
 
   // 2) Google Sheetsga fon rejimida yuboramiz
-  backgroundSync('addOrder', {number, qty, date: todayISO()}, '✅ Zayavka Google Sheetsga tushdi');
+  idleRun(()=>backgroundSync('addOrder', {number, qty, date: todayISO()}, '✅ Zayavka Google Sheetsga tushdi'));
 }
 
 function syncMonthByYear(){
@@ -709,12 +748,11 @@ async function addWork(){
   localSave();
 
   safeEl('workQty').value='';
-  showOrderProgress();
-  refreshAll();
-  setSyncStatus('✅ Ish saytda saqlandi','ok');
+  fastAfterWork();
+  setSyncStatus('✅ Ish darhol saqlandi','ok');
 
   // 2) Google Sheetsga fon rejimida yuboramiz
-  backgroundSync('addWork', {positionId, orderNumber, employeeId, qty, createdBy: currentUser?.name||''}, '✅ Ish Google Sheetsga tushdi');
+  idleRun(()=>backgroundSync('addWork', {positionId, orderNumber, employeeId, qty, createdBy: currentUser?.name||''}, '✅ Ish Google Sheetsga tushdi'));
 }
 
 function renderSettings(){
@@ -860,13 +898,14 @@ function clearAllData(){
   alert('Google Sheets versiyada tozalashni Sheets ichidan yoki Apps Script orqali alohida qilish kerak.');
 }
 function refreshAll(){
+  const active=document.querySelector('.page.active')?.id || 'dashboardPage';
   renderSelects();
-  renderSettings();
   renderDashboard();
-  renderReport();
-  renderDaily();
-  renderOrders();
-  showOrderProgress();
+  if(active==='settingsPage') renderSettings();
+  if(active==='reportPage') renderReport();
+  if(active==='dailyPage') renderDaily();
+  if(active==='ordersPage') renderOrders();
+  if(active==='workPage') showOrderProgress();
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -882,7 +921,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
       if(currentUser){
         try{ await loadData(); refreshAll(); }catch(e){ console.warn(e); }
       }
-    }, 20000);
+    }, 60000);
   }catch(e){
     alert('Google Sheets bazaga ulanib bo‘lmadi: '+e.message);
   }
