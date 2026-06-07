@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESHIK SHKURKA PANEL</title>
+<style>
+:root{
+  --bg:#071225;
+  --panel:#111c2e;
+  --panel2:#17263b;
+  --line:#2d3f59;
+  --text:#eef6ff;
+  --muted:#9fb0c7;
+  --blue:#2f7df4;
+  --blue2:#2563eb;
+  --orange:#ff8a00;
+  --orange2:#ff6b00;
+  --green:#22c55e;
+  --green2:#10b981;
+  --red:#ef4444;
+  --yellow:#facc15;
+  --shadow:0 18px 45px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(255,138,0,.12),transparent 30%),
+    radial-gradient(circle at 90% 12%,rgba(34,197,94,.13),transparent 35%),
+    linear-gradient(135deg,#06101f,#0b1930 55%,#071225);
+  color:var(--text);
+}
+.header{
+  text-align:center;
+  padding:22px 12px 18px;
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:.5px;
+  background:rgba(7,18,37,.82);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  position:sticky;top:0;z-index:20;
+  backdrop-filter:blur(12px);
+}
+.container{max-width:1260px;margin:0 auto;padding:18px}
+.menu{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+  margin:0 auto 18px;position:sticky;top:77px;z-index:19;
+  background:rgba(7,18,37,.72);backdrop-filter:blur(10px);
+  padding:12px;border-bottom:1px solid rgba(255,255,255,.05)
+}
+.menu button{
+  border:0;border-radius:12px;padding:12px 18px;color:white;
+  font-weight:800;cursor:pointer;min-width:125px;
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  box-shadow:0 8px 22px rgba(37,99,235,.25);
+  transition:.2s;
+}
+.menu button:hover{transform:translateY(-2px);box-shadow:0 12px 25px rgba(255,138,0,.22)}
+.menu button.active{background:linear-gradient(135deg,var(--orange),var(--green2));}
+.menu button.hidden{display:none!important}
+.card{
+  background:linear-gradient(180deg,rgba(23,38,59,.95),rgba(13,25,45,.95));
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)
+}
+.page{display:none}.page.active{display:block}
+h2{font-size:24px;margin-bottom:16px} h3{font-size:18px;margin:18px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+input,select,textarea{
+  width:100%;padding:13px 14px;border-radius:10px;
+  border:1px solid #344761;background:#22324a;color:white;font-size:15px;
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,0,.16)}
+select option{background:#17263b;color:white}
+.btn{
+  border:0;border-radius:10px;padding:12px 16px;font-weight:900;color:white;
+  cursor:pointer;background:linear-gradient(135deg,var(--blue),var(--blue2));
+  box-shadow:0 9px 20px rgba(37,99,235,.22);transition:.18s
+}
+.btn:hover{transform:translateY(-1px)}
+.btn.orange{background:linear-gradient(135deg,var(--orange),var(--orange2))}
+.btn.green{background:linear-gradient(135deg,var(--green),var(--green2))}
+.btn.red{background:linear-gradient(135deg,var(--red),#dc2626)}
+.btn.gray{background:linear-gradient(135deg,#64748b,#475569)}
+.btn.small{padding:8px 10px;font-size:12px;border-radius:8px}
+.tableWrap{overflow:auto;border-radius:12px}
+table{width:100%;border-collapse:separate;border-spacing:0 8px;min-width:800px}
+th{background:#33445e;color:#dbeafe;text-align:left;padding:12px;font-size:13px;text-transform:uppercase}
+td{background:#101d31;padding:12px;border-top:1px solid rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.04)}
+tr td:first-child, th:first-child{border-radius:10px 0 0 10px}
+tr td:last-child, th:last-child{border-radius:0 10px 10px 0}
+.clickRow{cursor:pointer}.clickRow:hover td{background:#152844}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-weight:900;font-size:12px}
+.badge.green{background:rgba(34,197,94,.18);color:#86efac}
+.badge.orange{background:rgba(255,138,0,.18);color:#fdba74}
+.badge.red{background:rgba(239,68,68,.18);color:#fca5a5}
+.badge.blue{background:rgba(59,130,246,.18);color:#93c5fd}
+.infoBox{padding:12px 14px;border-radius:12px;background:rgba(47,125,244,.15);border-left:4px solid var(--blue);margin:12px 0;color:#dbeafe}
+.warnBox{padding:12px 14px;border-radius:12px;background:rgba(239,68,68,.15);border-left:4px solid var(--red);margin:12px 0;color:#fecaca;font-weight:900}
+.okBox{padding:12px 14px;border-radius:12px;background:rgba(34,197,94,.14);border-left:4px solid var(--green);margin:12px 0;color:#bbf7d0;font-weight:900}
+#loginOverlay{
+  position:fixed;inset:0;background:rgba(3,7,18,.83);backdrop-filter:blur(8px);
+  z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px
+}
+.loginBox{
+  width:100%;max-width:420px;border-radius:18px;padding:24px;
+  background:linear-gradient(180deg,#17263b,#0f1a2d);
+  border:1px solid #3b4f6b;box-shadow:0 30px 90px rgba(0,0,0,.55)
+}
+.loginBox h1{font-size:23px;margin-bottom:14px}
+.statusText{font-size:13px;font-weight:900;margin-top:8px;min-height:20px}
+.statusText.red{color:#f87171}.statusText.green{color:#86efac}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{padding:18px;border-radius:15px;background:linear-gradient(180deg,#17263b,#101d31);border:1px solid rgba(255,255,255,.08)}
+.stat div:first-child{color:#a8b6cc;font-weight:800}.stat b{font-size:28px;display:block;margin-top:6px}
+.permissions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.checkItem{display:flex;align-items:center;gap:8px;background:#101d31;border:1px solid #31445f;border-radius:10px;padding:10px}
+.checkItem input{width:auto}
+.hidden{display:none!important}
+.statusDone td{box-shadow:inset 4px 0 0 var(--green)}
+.statusNot td{box-shadow:inset 4px 0 0 var(--red)}
+.statusProgress td{box-shadow:inset 4px 0 0 var(--yellow)}
+.detailPanel{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:15px;
+  padding:16px;
+  background:rgba(8,18,34,.65);
+  margin-top:14px;
+}
+.detailGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.detailItem{
+  background:#101d31;border:1px solid #31445f;border-radius:12px;padding:13px;
+}
+.progressBar{height:9px;background:#27384f;border-radius:999px;overflow:hidden;margin-top:8px}
+.progressBar span{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--green));border-radius:999px}
+@media(max-width:850px){
+  .grid,.grid2,.grid4,.cards,.permissions,.detailGrid{grid-template-columns:1fr}
+  .menu{top:72px;justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap}
+  .menu button{min-width:118px;padding:10px 12px;font-size:13px}
+  .container{padding:12px}
+  .header{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<div id="loginOverlay">
+  <div class="loginBox">
+    <h1>🚪 ESHIK SHKURKA PANEL 🚪</h1>
+    <p style="color:var(--muted);margin-bottom:8px">PIN kod bilan kiring</p>
+    <input id="loginPin" type="password" placeholder="PIN kod">
+    <button class="btn orange" style="width:100%;margin-top:12px" onclick="login()">Kirish</button>
+  </div>
+</div>
+
+<div class="header">🚪 ESHIK SHKURKA PANEL 🚪</div>
+
+<div class="menu" id="mainMenu">
+  <button data-page="dashboardPage" onclick="openPage('dashboardPage')">🏠 Dashboard</button>
+  <button data-page="regPage" onclick="openPage('regPage')">📝 Registratsiya</button>
+  <button data-page="ordersPage" onclick="openPage('ordersPage')">📋 Zayavkalar</button>
+  <button data-page="workPage" onclick="openPage('workPage')">🛠 Ish Paneli</button>
+  <button data-page="reportPage" onclick="openPage('reportPage')">📊 Hisobot</button>
+  <button data-page="dailyPage" onclick="openPage('dailyPage')">📅 Kunlik Hisobot</button>
+  <button data-page="settingsPage" onclick="openPage('settingsPage')">⚙️ Nastroyka</button>
+  <button onclick="logout()">🚪 Chiqish</button>
+</div>
+
+<div class="container">
+
+  <div id="dashboardPage" class="page active">
+    <div class="cards">
+      <div class="stat"><div>📋 Jami zayavka</div><b id="stTotalOrders">0</b></div>
+      <div class="stat"><div>✅ Bitgan zayavka</div><b id="stDoneOrders">0</b></div>
+      <div class="stat"><div>🛠 Bugungi ish</div><b id="stTodayWork">0</b></div>
+      <div class="stat"><div>💰 Jami summa</div><b id="stTotalSum">0</b></div>
+    </div>
+    <div class="card">
+      <h2>Oxirgi ishlar</h2>
+      <div class="tableWrap">
+        <table><thead><tr><th>Sana</th><th>Pozitsiya</th><th>Xodim</th><th>Zayavka</th><th>Miqdor</th></tr></thead><tbody id="lastWorksBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="regPage" class="page">
+    <div class="card">
+      <h2>📝 Yangi zayavka registratsiya</h2>
+      <div class="grid2">
+        <div>
+          <input id="regNumber" placeholder="Zayavka raqami" autocomplete="off" oninput="checkRegNumberLive()">
+          <div id="regStatus" class="statusText"></div>
+        </div>
+        <input id="regQty" type="number" min="1" placeholder="Eshik soni">
+      </div>
+      <button class="btn green" style="margin-top:10px" onclick="addOrder()">Saqlash</button>
+    </div>
+  </div>
+
+  <div id="ordersPage" class="page">
+    <div class="card">
+      <h2>📋 Registratsiya qilingan zayavkalar</h2>
+      <div class="infoBox">Bu bo‘limda zayavkalar alohida ko‘rinadi. Hozirgi oy avtomatik tanlanadi. Zayavka ustiga bosilsa, hamma pozitsiya alohida ochiladi.</div>
+      <div class="grid4">
+        <input id="ordersMonth" type="month" onchange="renderOrders()">
+        <select id="ordersYear" onchange="syncMonthByYear();renderOrders()"></select>
+        <select id="ordersStatus" onchange="renderOrders()">
+          <option value="">Barcha holatlar</option>
+          <option value="done">O‘tilgan</option>
+          <option value="not">O‘tilmagan</option>
+          <option value="progress">Qoldig‘i bor</option>
+        </select>
+        <input id="ordersSearch" placeholder="Zayavka raqami bo‘yicha qidiruv" oninput="renderOrders()">
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Sana</th><th>Zayavka</th><th>Eshik soni</th><th>Holat</th><th>Qisqa ma’lumot</th><th>Amal</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+      <div id="orderDetails" class="detailPanel hidden"></div>
+    </div>
+  </div>
+
+  <div id="workPage" class="page">
+    <div class="card">
+      <h2>🛠 Ish kiritish</h2>
+      <div id="adminPermissionInfo" class="infoBox"></div>
+      <div class="grid4">
+        <select id="workPosition" onchange="onWorkPositionChange()"></select>
+        <input id="workOrder" placeholder="Zayavka raqami" oninput="showOrderProgress()">
+        <input id="workQty" type="number" min="1" placeholder="Miqdor">
+        <select id="workEmployee"></select>
+      </div>
+      <div id="workInfo"></div>
+      <button class="btn orange" style="margin-top:10px" onclick="addWork()">Saqlash</button>
+    </div>
+  </div>
+
+  <div id="reportPage" class="page">
+    <div class="card">
+      <h2>📊 Hisobot</h2>
+      <div class="grid4">
+        <select id="reportPosition" onchange="renderReport()"></select>
+        <input id="reportMonth" type="month" onchange="renderReport()">
+        <input id="reportEmpSearch" placeholder="Xodim bo‘yicha qidiruv" oninput="renderReport()">
+        <input id="reportMinQty" type="number" placeholder="Kamida miqdor" oninput="renderReport()">
+      </div>
+      <div class="tableWrap">
+        <table><thead><tr><th>Xodim</th><th>Pozitsiya</th><th>Miqdor</th><th>Narx</th><th>Jami</th></tr></thead><tbody id="reportBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="dailyPage" class="page">
+    <div class="card">
+      <h2>📅 Kunlik Hisobot</h2>
+      <div class="grid4">
+        <select id="dailyPosition" onchange="renderDaily()"></select>
+        <input id="dailyFrom" type="date" onchange="renderDaily()">
+        <input id="dailyTo" type="date" onchange="renderDaily()">
+        <input id="dailySearch" placeholder="Zayavka yoki xodim" oninput="renderDaily()">
+      </div>
+      <div class="tableWrap">
+        <table><thead><tr><th>Sana</th><th>Pozitsiya</th><th>Xodim</th><th>Zayavka</th><th>Miqdor</th><th>Summa</th><th>Amal</th></tr></thead><tbody id="dailyBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsPage" class="page">
+    <div class="card">
+      <h2>⚙️ Nastroyka</h2>
+      <div class="infoBox">Bu bo‘limda pozitsiyalar, xodimlar, adminlar va ruxsatlar sozlanadi.</div>
+
+      <h3>1) Pozitsiya qo‘shish</h3>
+      <div class="grid">
+        <input id="posName" placeholder="Masalan: Chornavoy">
+        <input id="posPrice" type="number" placeholder="Narx, masalan 3000">
+        <button class="btn green" onclick="addPosition()">Pozitsiya qo‘shish</button>
+      </div>
+      <div class="tableWrap">
+        <table><thead><tr><th>Tartib</th><th>Pozitsiya</th><th>Narx</th><th>Joyini almashtirish</th><th>Amal</th></tr></thead><tbody id="positionsBody"></tbody></table>
+      </div>
+
+      <h3>2) Xodim qo‘shish</h3>
+      <div class="grid">
+        <input id="empCode" placeholder="Xodim kodi">
+        <input id="empName" placeholder="FIO">
+        <select id="empPosition"></select>
+      </div>
+      <button class="btn green" style="margin-top:10px" onclick="addEmployee()">Xodim qo‘shish</button>
+      <div class="tableWrap">
+        <table><thead><tr><th>Kod</th><th>FIO</th><th>Biriktirilgan pozitsiya</th><th>Amal</th></tr></thead><tbody id="employeesBody"></tbody></table>
+      </div>
+
+      <h3>3) Admin qo‘shish va ruxsat berish</h3>
+      <div class="grid">
+        <input id="adminName" placeholder="Admin ismi">
+        <input id="adminPin" placeholder="Admin paroli">
+        <button class="btn green" onclick="addAdmin()">Admin qo‘shish</button>
+      </div>
+      <div class="tableWrap">
+        <table><thead><tr><th>Admin</th><th>PIN</th><th>Pozitsiyaga ruxsat</th><th>Amal</th></tr></thead><tbody id="adminsBody"></tbody></table>
+      </div>
+
+      <h3>4) Ma’lumotlar</h3>
+      <button class="btn gray" onclick="downloadBackup()">Backup yuklash</button>
+      <button class="btn red" onclick="clearAllData()">Hammasini tozalash</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const KEY = 'shkurka_panel_local_v5_fixed';
+let currentUser = null;
+let selectedOrderId = '';
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function currentMonth(){return new Date().toISOString().slice(0,7)}
+function money(n){return (Number(n)||0).toLocaleString('uz-UZ')}
+function safeEl(id){return document.getElementById(id)}
+function norm(v){return String(v||'').trim().toLowerCase()}
+
+function defaultData(){
+  return {
+    positions:[
+      {id:uid(),name:'Chornavoy',price:3000,order:1},
+      {id:uid(),name:'Chistavoy',price:3000,order:2}
+    ],
+    employees:[
+      {id:uid(),code:'001',name:'Aliyev Ali',positionId:'all'},
+      {id:uid(),code:'002',name:'Valiyev Vali',positionId:'all'}
+    ],
+    admins:[
+      {id:uid(),name:'Admin',pin:'1234',permissions:[]}
+    ],
+    orders:[],
+    works:[]
+  };
+}
+
+function loadData(){
+  let d;
+  try{d=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){d=null}
+  if(!d){d=defaultData();localStorage.setItem(KEY,JSON.stringify(d))}
+  d.positions = d.positions||[];
+  d.employees = d.employees||[];
+  d.admins = d.admins||[];
+  d.orders = d.orders||[];
+  d.works = d.works||[];
+  if(!d.positions.length){
+    d.positions.push({id:uid(),name:'Chornavoy',price:3000,order:1},{id:uid(),name:'Chistavoy',price:3000,order:2});
+  }
+  if(!d.admins.length)d.admins.push({id:uid(),name:'Admin',pin:'1234',permissions:[]});
+  saveData(d);
+  return d;
+}
+function saveData(d){localStorage.setItem(KEY,JSON.stringify(d))}
+function data(){return loadData()}
+function sortedPositions(){
+  return data().positions.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+}
+function getPos(id){return data().positions.find(p=>p.id===id)}
+function getEmp(id){return data().employees.find(e=>e.id===id)}
+function getOrder(num){return data().orders.find(o=>norm(o.number)===norm(num))}
+function getOrderById(id){return data().orders.find(o=>o.id===id)}
+function orderDoneByPosition(orderNumber, positionId){
+  return data().works.filter(w=>norm(w.orderNumber)===norm(orderNumber)&&w.positionId===positionId).reduce((s,w)=>s+(Number(w.qty)||0),0);
+}
+function orderStatus(order){
+  const ps=sortedPositions();
+  if(!ps.length)return 'not';
+  const any=ps.some(p=>orderDoneByPosition(order.number,p.id)>0);
+  const all=ps.every(p=>orderDoneByPosition(order.number,p.id)>=Number(order.qty));
+  if(all)return 'done';
+  if(any)return 'progress';
+  return 'not';
+}
+function orderStatusBadge(order){
+  const st=orderStatus(order);
+  if(st==='done')return '<span class="badge green">✅ O‘tilgan</span>';
+  if(st==='progress')return '<span class="badge orange">🟡 Qoldig‘i bor</span>';
+  return '<span class="badge red">❌ O‘tilmagan</span>';
+}
+function previousPositionsDone(orderNumber, positionId){
+  const ps=sortedPositions();
+  const index=ps.findIndex(p=>p.id===positionId);
+  if(index<=0)return {ok:true,msg:''};
+  const o=getOrder(orderNumber); if(!o)return {ok:false,msg:'Zayavka topilmadi'};
+  for(let i=0;i<index;i++){
+    const prev=ps[i];
+    const done=orderDoneByPosition(orderNumber,prev.id);
+    if(done < Number(o.qty)){
+      return {ok:false,msg:`Oldin ${prev.name} to‘liq bitishi kerak. Jami ${o.qty}, bitgan ${done}, qoldi ${Number(o.qty)-done}.`};
+    }
+  }
+  return {ok:true,msg:''};
+}
+function canUserUsePosition(positionId){
+  if(!currentUser)return false;
+  if(currentUser.role==='General')return true;
+  const admin=data().admins.find(a=>a.id===currentUser.id);
+  if(!admin)return false;
+  return (admin.permissions||[]).includes(positionId);
+}
+
+function login(){
+  const pin=safeEl('loginPin').value.trim();
+  if(pin==='general456'){
+    currentUser={role:'General',name:'General'};
+    safeEl('loginOverlay').style.display='none';
+    applyRoleMenu();
+    refreshAll();
+    openPage('dashboardPage');
+    return;
+  }
+  const adm=data().admins.find(a=>String(a.pin)===pin);
+  if(adm){
+    currentUser={role:'Admin',name:adm.name,id:adm.id};
+    safeEl('loginOverlay').style.display='none';
+    applyRoleMenu();
+    refreshAll();
+    openPage('dashboardPage');
+    return;
+  }
+  alert('PIN noto‘g‘ri!');
+}
+function logout(){
+  currentUser=null;
+  safeEl('loginPin').value='';
+  safeEl('loginOverlay').style.display='flex';
+}
+function applyRoleMenu(){
+  document.querySelectorAll('#mainMenu button[data-page]').forEach(btn=>btn.classList.remove('hidden'));
+  if(currentUser && currentUser.role==='Admin'){
+    ['regPage','ordersPage','reportPage','settingsPage'].forEach(id=>{
+      const b=document.querySelector(`#mainMenu button[data-page="${id}"]`);
+      if(b)b.classList.add('hidden');
+    });
+  }
+}
+function openPage(id){
+  if(!currentUser)return;
+  if(currentUser.role==='Admin' && !['dashboardPage','workPage','dailyPage'].includes(id)){
+    id='dashboardPage';
+  }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const page=safeEl(id);
+  if(page)page.classList.add('active');
+  document.querySelectorAll('#mainMenu button[data-page]').forEach(b=>b.classList.remove('active'));
+  const btn=document.querySelector(`#mainMenu button[data-page="${id}"]`);
+  if(btn)btn.classList.add('active');
+  refreshAll();
+}
+
+function checkRegNumberLive(){
+  const val=safeEl('regNumber').value.trim();
+  const st=safeEl('regStatus');
+  st.className='statusText';
+  if(!val){st.textContent='';return}
+  const o=getOrder(val);
+  if(o){
+    st.classList.add('red');
+    st.textContent=`❌ OLDIN YOZILGAN — ${o.qty} ta eshik`;
+  }else{
+    st.classList.add('green');
+    st.textContent='✅ Yangi zayavka, yozilmagan';
+  }
+}
+function addOrder(){
+  const number=safeEl('regNumber').value.trim();
+  const qty=Number(safeEl('regQty').value);
+  if(!number || qty<=0)return alert('Zayavka raqami va eshik sonini kiriting!');
+  if(getOrder(number))return alert(`Bu zayavka oldin yozilgan! Eshik soni: ${getOrder(number).qty}`);
+  const d=data();
+  d.orders.push({id:uid(),number,qty,date:todayISO(),closed:false});
+  saveData(d);
+  safeEl('regNumber').value=''; safeEl('regQty').value=''; checkRegNumberLive();
+  alert('Zayavka saqlandi!');
+  refreshAll();
+}
+
+function syncMonthByYear(){
+  const y=safeEl('ordersYear').value;
+  const month=safeEl('ordersMonth').value || currentMonth();
+  const m=month.split('-')[1] || new Date().toISOString().slice(5,7);
+  if(y)safeEl('ordersMonth').value=y+'-'+m;
+}
+function renderOrderYears(){
+  const years=[...new Set(data().orders.map(o=>String(o.date||todayISO()).slice(0,4)))];
+  const cur=String(new Date().getFullYear());
+  if(!years.includes(cur))years.push(cur);
+  years.sort((a,b)=>b.localeCompare(a));
+  safeEl('ordersYear').innerHTML=years.map(y=>`<option value="${y}">${y}-yil</option>`).join('');
+  safeEl('ordersYear').value=(safeEl('ordersMonth').value||currentMonth()).slice(0,4);
+}
+function renderOrders(){
+  if(!safeEl('ordersMonth').value)safeEl('ordersMonth').value=currentMonth();
+  renderOrderYears();
+  const d=data();
+  const month=safeEl('ordersMonth').value||currentMonth();
+  const year=safeEl('ordersYear').value;
+  const st=safeEl('ordersStatus').value;
+  const q=norm(safeEl('ordersSearch').value);
+  let arr=d.orders.filter(o=>{
+    const od=String(o.date||'').slice(0,10);
+    if(month && String(o.date||'').slice(0,7)!==month)return false;
+    if(year && String(o.date||'').slice(0,4)!==year)return false;
+    if(st && orderStatus(o)!==st)return false;
+    if(q && !norm(o.number).includes(q))return false;
+    return true;
+  }).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  safeEl('ordersBody').innerHTML=arr.map(o=>{
+    const stt=orderStatus(o);
+    const className=stt==='done'?'statusDone':(stt==='progress'?'statusProgress':'statusNot');
+    const ps=sortedPositions();
+    const doneCount=ps.filter(p=>orderDoneByPosition(o.number,p.id)>=Number(o.qty)).length;
+    const quick=stt==='done'?'Barcha pozitsiya bitgan':(stt==='progress'?`${doneCount}/${ps.length} pozitsiya bitgan`:'Hali ish kiritilmagan');
+    return `<tr class="clickRow ${className}" onclick="toggleOrderDetails('${o.id}')">
+      <td>${o.date||'—'}</td>
+      <td><b>${o.number}</b></td>
+      <td>${o.qty} ta</td>
+      <td>${orderStatusBadge(o)}</td>
+      <td>${quick} <span class="badge blue">ustiga bosing</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn small" onclick="editOrder('${o.id}')">✏️ Tahrirlash</button>
+        <button class="btn red small" onclick="deleteOrder('${o.id}')">🗑 O‘chirish</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6">Ma’lumot topilmadi</td></tr>';
+  if(selectedOrderId && !arr.some(o=>o.id===selectedOrderId)){
+    selectedOrderId='';
+    safeEl('orderDetails').classList.add('hidden');
+  }
+  if(selectedOrderId)renderSelectedOrderDetails();
+}
+function toggleOrderDetails(id){
+  if(selectedOrderId===id){
+    selectedOrderId='';
+    safeEl('orderDetails').classList.add('hidden');
+    safeEl('orderDetails').innerHTML='';
+    return;
+  }
+  selectedOrderId=id;
+  renderSelectedOrderDetails();
+}
+function renderSelectedOrderDetails(){
+  const o=getOrderById(selectedOrderId);
+  const box=safeEl('orderDetails');
+  if(!o){box.classList.add('hidden');return}
+  const ps=sortedPositions();
+  const items=ps.map(p=>{
+    const done=orderDoneByPosition(o.number,p.id);
+    const left=Math.max(Number(o.qty)-done,0);
+    const percent=Math.min(100,Math.round(done/Number(o.qty)*100));
+    let badge=done>=Number(o.qty)?'<span class="badge green">✅ Bitgan</span>':(done>0?'<span class="badge orange">🟡 Qoldiq bor</span>':'<span class="badge red">❌ Qilinmagan</span>');
+    return `<div class="detailItem">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${p.name}</b>${badge}</div>
+      <div style="margin-top:8px;color:#cbd5e1">Qilingan: <b>${done}</b> / ${o.qty} ta</div>
+      <div style="color:#facc15">Qoldiq: <b>${left}</b> ta</div>
+      <div class="progressBar"><span style="width:${percent}%"></span></div>
+    </div>`;
+  }).join('');
+  box.innerHTML=`<h3>📌 Zayavka ${o.number} — ${o.qty} ta eshik</h3>
+    <div style="margin-bottom:10px">${orderStatusBadge(o)}</div>
+    <div class="detailGrid">${items}</div>`;
+  box.classList.remove('hidden');
+}
+function editOrder(id){
+  const d=data();
+  const o=d.orders.find(x=>x.id===id);
+  if(!o)return;
+  const newNumber=prompt('Yangi zayavka raqamini kiriting:', o.number);
+  if(!newNumber)return;
+  const newQtyStr=prompt('Yangi eshik sonini kiriting:', o.qty);
+  const newQty=Number(newQtyStr);
+  if(newQty<=0)return alert('Eshik soni noto‘g‘ri!');
+  if(d.orders.some(x=>x.id!==id && norm(x.number)===norm(newNumber)))return alert('Bu zayavka raqami oldin bor!');
+  const oldNumber=o.number;
+  o.number=newNumber.trim();
+  o.qty=newQty;
+  d.works.forEach(w=>{if(norm(w.orderNumber)===norm(oldNumber))w.orderNumber=o.number});
+  saveData(d);
+  selectedOrderId=id;
+  refreshAll();
+}
+function deleteOrder(id){
+  const d=data();
+  const o=d.orders.find(x=>x.id===id);
+  if(!o)return;
+  if(!confirm(`${o.number} zayavka o‘chirilsinmi? Unga tegishli ish yozuvlari ham o‘chadi.`))return;
+  d.orders=d.orders.filter(x=>x.id!==id);
+  d.works=d.works.filter(w=>norm(w.orderNumber)!==norm(o.number));
+  saveData(d);
+  if(selectedOrderId===id)selectedOrderId='';
+  refreshAll();
+}
+
+function onWorkPositionChange(){
+  renderWorkEmployees();
+  showOrderProgress();
+}
+function renderWorkEmployees(){
+  const posId=safeEl('workPosition').value;
+  const sel=safeEl('workEmployee');
+  const emps=data().employees.filter(e=>e.positionId==='all'||e.positionId===posId);
+  sel.innerHTML='<option value="">Xodim tanlang</option>'+emps.map(e=>`<option value="${e.id}">${e.name} (${e.code})</option>`).join('');
+}
+function showOrderProgress(){
+  const orderNum=safeEl('workOrder').value.trim();
+  const posId=safeEl('workPosition').value;
+  const box=safeEl('workInfo');
+  if(!orderNum || !posId){box.innerHTML='';return}
+  const o=getOrder(orderNum);
+  if(!o){box.innerHTML='<div class="warnBox">❌ Zayavka topilmadi</div>';return}
+  const pos=getPos(posId);
+  const done=orderDoneByPosition(orderNum,posId);
+  const left=Number(o.qty)-done;
+  const prev=previousPositionsDone(orderNum,posId);
+  let html=`<div class="infoBox"><b>${o.number}</b> — jami ${o.qty} ta. <b>${pos.name}</b>: bitgan ${done}, qoldi ${Math.max(left,0)}.</div>`;
+  if(!prev.ok)html+=`<div class="warnBox">⚠️ ${prev.msg}</div>`;
+  box.innerHTML=html;
+}
+function addWork(){
+  const positionId=safeEl('workPosition').value;
+  const orderNumber=safeEl('workOrder').value.trim();
+  const employeeId=safeEl('workEmployee').value;
+  const qty=Number(safeEl('workQty').value);
+  if(!positionId || !orderNumber || !employeeId || qty<=0)return alert('Barcha maydonlarni to‘ldiring!');
+  if(!canUserUsePosition(positionId))return alert('Sizda bu pozitsiyaga yozish ruxsati yo‘q!');
+  const o=getOrder(orderNumber);
+  if(!o)return alert('Zayavka topilmadi!');
+  const prev=previousPositionsDone(orderNumber,positionId);
+  if(!prev.ok)return alert(prev.msg);
+  const done=orderDoneByPosition(orderNumber,positionId);
+  if(done+qty > Number(o.qty))return alert(`Qoldiq yetarli emas. Qoldi: ${Number(o.qty)-done}`);
+  const d=data();
+  d.works.push({id:uid(),date:new Date().toISOString(),dateStr:new Date().toLocaleString('uz-UZ'),positionId,orderNumber,employeeId,qty});
+  saveData(d);
+  safeEl('workQty').value='';
+  showOrderProgress();
+  refreshAll();
+  alert('Saqlandi!');
+}
+
+function renderSettings(){
+  const d=data();
+  const ps=sortedPositions();
+  safeEl('positionsBody').innerHTML=ps.map((p,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><input value="${p.name}" onchange="updatePosition('${p.id}','name',this.value)"></td>
+      <td><input type="number" value="${p.price}" onchange="updatePosition('${p.id}','price',this.value)"></td>
+      <td><button class="btn small" onclick="movePosition('${p.id}',-1)">⬆</button> <button class="btn small" onclick="movePosition('${p.id}',1)">⬇</button></td>
+      <td><button class="btn red small" onclick="deletePosition('${p.id}')">O‘chirish</button></td>
+    </tr>`).join('');
+  const posOptions='<option value="all">Umumiy</option>'+ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  safeEl('empPosition').innerHTML=posOptions;
+  safeEl('employeesBody').innerHTML=d.employees.map(e=>`
+    <tr><td>${e.code}</td><td>${e.name}</td><td>${e.positionId==='all'?'Umumiy':(getPos(e.positionId)?.name||'—')}</td>
+    <td><button class="btn red small" onclick="deleteEmployee('${e.id}')">O‘chirish</button></td></tr>`).join('');
+  safeEl('adminsBody').innerHTML=d.admins.map(a=>`
+    <tr>
+      <td>${a.name}</td><td>${a.pin}</td>
+      <td><div class="permissions">${ps.map(p=>`
+        <label class="checkItem"><input type="checkbox" ${(a.permissions||[]).includes(p.id)?'checked':''} onchange="togglePermission('${a.id}','${p.id}',this.checked)"> ${p.name}</label>`).join('')}</div></td>
+      <td><button class="btn red small" onclick="deleteAdmin('${a.id}')">O‘chirish</button></td>
+    </tr>`).join('');
+}
+function addPosition(){
+  const name=safeEl('posName').value.trim();
+  const price=Number(safeEl('posPrice').value)||0;
+  if(!name)return alert('Pozitsiya nomini kiriting!');
+  const d=data();
+  if(d.positions.some(p=>norm(p.name)===norm(name)))return alert('Bu pozitsiya bor!');
+  d.positions.push({id:uid(),name,price,order:d.positions.length+1});
+  saveData(d); safeEl('posName').value=''; safeEl('posPrice').value='';
+  refreshAll();
+}
+function updatePosition(id,field,val){
+  const d=data(); const p=d.positions.find(x=>x.id===id); if(!p)return;
+  p[field]=field==='price'?Number(val)||0:val;
+  saveData(d); refreshAll();
+}
+function movePosition(id,dir){
+  const d=data(); let ps=d.positions.sort((a,b)=>(a.order||0)-(b.order||0));
+  const i=ps.findIndex(p=>p.id===id); const j=i+dir;
+  if(i<0||j<0||j>=ps.length)return;
+  [ps[i],ps[j]]=[ps[j],ps[i]];
+  ps.forEach((p,idx)=>p.order=idx+1);
+  saveData(d); refreshAll();
+}
+function deletePosition(id){
+  if(!confirm('Pozitsiya o‘chirilsinmi?'))return;
+  const d=data();
+  d.positions=d.positions.filter(p=>p.id!==id);
+  d.employees.forEach(e=>{if(e.positionId===id)e.positionId='all'});
+  d.admins.forEach(a=>a.permissions=(a.permissions||[]).filter(x=>x!==id));
+  d.positions.sort((a,b)=>(a.order||0)-(b.order||0)).forEach((p,i)=>p.order=i+1);
+  saveData(d); refreshAll();
+}
+function addEmployee(){
+  const code=safeEl('empCode').value.trim(), name=safeEl('empName').value.trim(), positionId=safeEl('empPosition').value;
+  if(!code||!name)return alert('Xodim kodi va FIO kiriting!');
+  const d=data(); if(d.employees.some(e=>norm(e.code)===norm(code)))return alert('Bu kod bor!');
+  d.employees.push({id:uid(),code,name,positionId});
+  saveData(d); safeEl('empCode').value=''; safeEl('empName').value=''; refreshAll();
+}
+function deleteEmployee(id){
+  if(!confirm('Xodim o‘chirilsinmi?'))return;
+  const d=data(); d.employees=d.employees.filter(e=>e.id!==id); saveData(d); refreshAll();
+}
+function addAdmin(){
+  const name=safeEl('adminName').value.trim(), pin=safeEl('adminPin').value.trim();
+  if(!name||!pin)return alert('Admin ismi va parolini kiriting!');
+  const d=data(); if(d.admins.some(a=>String(a.pin)===pin))return alert('Bu PIN bor!');
+  d.admins.push({id:uid(),name,pin,permissions:[]});
+  saveData(d); safeEl('adminName').value=''; safeEl('adminPin').value=''; refreshAll();
+}
+function deleteAdmin(id){
+  if(!confirm('Admin o‘chirilsinmi?'))return;
+  const d=data(); d.admins=d.admins.filter(a=>a.id!==id); saveData(d); refreshAll();
+}
+function togglePermission(adminId,posId,checked){
+  const d=data(); const a=d.admins.find(x=>x.id===adminId); if(!a)return;
+  a.permissions=a.permissions||[];
+  if(checked && !a.permissions.includes(posId))a.permissions.push(posId);
+  if(!checked)a.permissions=a.permissions.filter(x=>x!==posId);
+  saveData(d);
+}
+
+function renderSelects(){
+  const ps=sortedPositions();
+  const all='<option value="">Barchasi</option>'+ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const allowed=ps.filter(p=>canUserUsePosition(p.id));
+  safeEl('workPosition').innerHTML='<option value="">Pozitsiya tanlang</option>'+allowed.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  safeEl('reportPosition').innerHTML=all;
+  safeEl('dailyPosition').innerHTML=all;
+  if(!safeEl('reportMonth').value)safeEl('reportMonth').value=currentMonth();
+  if(!safeEl('dailyFrom').value)safeEl('dailyFrom').value=currentMonth()+'-01';
+  if(!safeEl('dailyTo').value)safeEl('dailyTo').value=todayISO();
+  if(!safeEl('ordersMonth').value)safeEl('ordersMonth').value=currentMonth();
+  const info=safeEl('adminPermissionInfo');
+  if(currentUser?.role==='Admin'){
+    info.innerHTML='Sizga ruxsat berilgan pozitsiyalar: '+(allowed.map(p=>p.name).join(', ')||'ruxsat yo‘q');
+  }else info.innerHTML='General barcha pozitsiyaga yozishi va barcha sozlamani ko‘rishi mumkin.';
+  renderWorkEmployees();
+}
+function renderDashboard(){
+  const d=data();
+  safeEl('stTotalOrders').textContent=d.orders.length;
+  safeEl('stDoneOrders').textContent=d.orders.filter(o=>orderStatus(o)==='done').length;
+  safeEl('stTodayWork').textContent=d.works.filter(w=>String(w.date).slice(0,10)===todayISO()).reduce((s,w)=>s+Number(w.qty||0),0);
+  const total=d.works.reduce((s,w)=>s+(Number(w.qty)||0)*(Number(getPos(w.positionId)?.price)||0),0);
+  safeEl('stTotalSum').textContent=money(total);
+  safeEl('lastWorksBody').innerHTML=d.works.slice(-10).reverse().map(w=>`
+    <tr><td>${new Date(w.date).toLocaleString('uz-UZ')}</td><td>${getPos(w.positionId)?.name||'—'}</td><td>${getEmp(w.employeeId)?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td></tr>`).join('') || '<tr><td colspan="5">Ma’lumot yo‘q</td></tr>';
+}
+function renderReport(){
+  const d=data(), pos=safeEl('reportPosition').value, month=safeEl('reportMonth').value||currentMonth();
+  const q=norm(safeEl('reportEmpSearch').value), min=Number(safeEl('reportMinQty').value)||0;
+  let map={};
+  d.works.filter(w=>(!pos||w.positionId===pos)&&String(w.date).slice(0,7)===month).forEach(w=>{
+    const e=getEmp(w.employeeId), p=getPos(w.positionId); if(!e||!p)return;
+    const key=e.id+'_'+p.id;
+    if(!map[key])map[key]={emp:e.name,pos:p.name,qty:0,price:p.price,total:0};
+    map[key].qty+=Number(w.qty)||0; map[key].total=map[key].qty*(Number(p.price)||0);
+  });
+  let arr=Object.values(map).filter(r=>(!q||norm(r.emp).includes(q))&&r.qty>=min);
+  safeEl('reportBody').innerHTML=arr.map(r=>`<tr><td>${r.emp}</td><td>${r.pos}</td><td>${r.qty}</td><td>${money(r.price)}</td><td>${money(r.total)}</td></tr>`).join('') || '<tr><td colspan="5">Ma’lumot topilmadi</td></tr>';
+}
+function renderDaily(){
+  const d=data(), pos=safeEl('dailyPosition').value, from=safeEl('dailyFrom').value, to=safeEl('dailyTo').value, q=norm(safeEl('dailySearch').value);
+  let arr=d.works.filter(w=>{
+    const day=String(w.date).slice(0,10), e=getEmp(w.employeeId), p=getPos(w.positionId);
+    if(pos&&w.positionId!==pos)return false;
+    if(from&&day<from)return false;
+    if(to&&day>to)return false;
+    if(q && !(norm(w.orderNumber).includes(q)||norm(e?.name).includes(q)))return false;
+    if(currentUser?.role==='Admin'&&!canUserUsePosition(w.positionId))return false;
+    return true;
+  }).slice().reverse();
+  safeEl('dailyBody').innerHTML=arr.map(w=>{
+    const p=getPos(w.positionId), e=getEmp(w.employeeId), sum=(Number(w.qty)||0)*(Number(p?.price)||0);
+    return `<tr><td>${new Date(w.date).toLocaleString('uz-UZ')}</td><td>${p?.name||'—'}</td><td>${e?.name||'—'}</td><td>${w.orderNumber}</td><td>${w.qty}</td><td>${money(sum)}</td><td>${currentUser?.role==='General'?`<button class="btn red small" onclick="deleteWork('${w.id}')">O‘chirish</button>`:''}</td></tr>`;
+  }).join('') || '<tr><td colspan="7">Ma’lumot topilmadi</td></tr>';
+}
+function deleteWork(id){
+  if(!confirm('Yozuv o‘chirilsinmi?'))return;
+  const d=data(); d.works=d.works.filter(w=>w.id!==id); saveData(d); refreshAll();
+}
+function downloadBackup(){
+  const blob=new Blob([JSON.stringify(data(),null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shkurka_backup.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function clearAllData(){
+  if(!confirm('Hamma ma’lumotlar o‘chadi. Ishonchingiz komilmi?'))return;
+  localStorage.removeItem(KEY); location.reload();
+}
+function refreshAll(){
+  renderSelects();
+  renderSettings();
+  renderDashboard();
+  renderReport();
+  renderDaily();
+  renderOrders();
+  showOrderProgress();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  loadData();
+  safeEl('reportMonth').value=currentMonth();
+  safeEl('dailyFrom').value=currentMonth()+'-01';
+  safeEl('dailyTo').value=todayISO();
+  safeEl('ordersMonth').value=currentMonth();
+  refreshAll();
+  applyRoleMenu();
+});
+</script>
+</body>
+</html>
